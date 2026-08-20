@@ -261,30 +261,45 @@
             }
 
             const html = decks.map(d => {
-                let badgeClass = '';
-                let badgeText = '';
-
-                // Bẫy lỗi: Nếu có trả về tong_so_tu = 0 thì chắc chắn là trống.
+                // Rỗng 100%
                 if (d.tong_so_tu === 0) {
-                    badgeClass = 'badge-gray';
-                    badgeText = 'Trống (Chưa có từ)';
-                } else if (d.so_tu_can_on > 0) {
-                    badgeClass = 'badge-red';
-                    badgeText = `Đang có ${d.so_tu_can_on} từ cần ôn`;
-                } else {
-                    // Nếu Backend chưa update cột tong_so_tu, code sẽ tự rơi vào nhánh Đã học xong
-                    badgeClass = 'badge-green';
-                    badgeText = 'Đã học sạch sẽ';
-                    if (d.tong_so_tu === undefined) {
-                        badgeText = 'Đã học xong (Hoặc rỗng - Check API!)';
-                    }
+                    return `
+                    <div class="deck-card">
+                        <div>
+                            <h3>${d.ten_hocphan} <span style="font-size:0.6em; color:var(--text-gray);">(ID: ${d.id})</span></h3>
+                            <span class="badge badge-gray">Trống (Chưa có từ)</span>
+                        </div>
+                        <div class="flex-buttons">
+                            <button class="btn-danger" style="flex: 1;" onclick="deleteDeck(${d.id})">Xóa</button>
+                        </div>
+                    </div>
+                    `;
                 }
-                
+
+                // Có Data thì build 3 mảng Đỏ/Vàng/Xanh
+                // Dùng toán tử || 0 để bẫy trường hợp Backend chưa đẩy code lên, né văng Null
+                let red = d.tu_do || 0;
+                let yellow = d.tu_vang || 0;
+                let green = d.tu_xanh || 0;
+
+                // Build HTML các thẻ trạng thái (Chỉ hiển thị nếu lớn hơn 0)
+                let statusBadges = '';
+                if (red > 0) statusBadges += `<span class="badge badge-red" style="margin: 0 5px 5px 0;">🔴 Cần ôn: ${red}</span>`;
+                if (yellow > 0) statusBadges += `<span class="badge" style="margin: 0 5px 5px 0; background: rgba(255, 193, 7, 0.2); color: #ffc107;">🟡 Chờ ôn: ${yellow}</span>`;
+                if (green > 0) statusBadges += `<span class="badge badge-green" style="margin: 0 5px 5px 0;">🟢 Đã thuộc: ${green}</span>`;
+
+                // Nếu Backend cũ vẫn báo theo dạng tổng chung chưa update (bẫy lỗi)
+                if (red === 0 && yellow === 0 && green === 0 && d.so_tu_can_on > 0) {
+                     statusBadges = `<span class="badge badge-red" style="margin: 0 5px 5px 0;">🔴 Cần ôn: ${d.so_tu_can_on}</span>`;
+                }
+
                 return `
                 <div class="deck-card">
                     <div>
                         <h3>${d.ten_hocphan} <span style="font-size:0.6em; color:var(--text-gray);">(ID: ${d.id})</span></h3>
-                        <span class="badge ${badgeClass}">${badgeText}</span>
+                        <div style="display: flex; flex-wrap: wrap; margin-bottom: 15px;">
+                            ${statusBadges}
+                        </div>
                     </div>
                     <div class="flex-buttons">
                         <button onclick="enterStudyMode(${d.id})">Bắt đầu học</button>
