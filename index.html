@@ -567,7 +567,22 @@
     swipeWrapper.addEventListener('pointerup', endDrag);
     swipeWrapper.addEventListener('pointercancel', endDrag);
 
-    /* 5. TEXT TO SPEECH (PHÁT ÂM TỪ VỰNG) */
+ /* 5. TEXT TO SPEECH (PHÁT ÂM TỪ VỰNG - BẢN NÂNG CẤP GIỌNG AI) */
+    
+    // Ép trình duyệt mồi sẵn danh sách giọng nói ngầm từ lúc web mới mở
+    // Để tránh tình trạng bấm lần đầu nó bị câm vì chưa tải kịp
+    window.speechSynthesis.onvoiceschanged = function() {
+        window.speechSynthesis.getVoices();
+    };
+
+ /* 5. TEXT TO SPEECH (PHÁT ÂM TỪ VỰNG - BẢN NÂNG CẤP GIỌNG AI) */
+    
+    // Ép trình duyệt mồi sẵn danh sách giọng nói ngầm từ lúc web mới mở
+    // Để tránh tình trạng bấm lần đầu nó bị câm vì chưa tải kịp
+    window.speechSynthesis.onvoiceschanged = function() {
+        window.speechSynthesis.getVoices();
+    };
+
     function speakWord(event) {
         if (event) event.stopPropagation();
 
@@ -578,11 +593,28 @@
             window.speechSynthesis.cancel();
             const utterance = new SpeechSynthesisUtterance(cleanWord);
             utterance.lang = 'en-US'; 
-            utterance.rate = 0.9;     
+            utterance.rate = 0.9; // Giảm tốc độ xuống một chút cho dễ nghe
+            
+            // TRUY LÙNG GIỌNG XỊN 
+            const voices = window.speechSynthesis.getVoices();
+            
+            // Bộ lọc ưu tiên: 
+            // 1. Giọng Google xịn (nếu xài Chrome)
+            // 2. Giọng AI Natural của Microsoft (nếu xài Edge)
+            // 3. Fallback về giọng tiếng Anh Mỹ mặc định
+            let bestVoice = voices.find(v => v.name.includes('Google US English')) || 
+                            voices.find(v => v.name.includes('Natural') && v.lang.includes('en-US')) || 
+                            voices.find(v => v.lang === 'en-US');
+
+            if (bestVoice) {
+                utterance.voice = bestVoice;
+            }
+
             window.speechSynthesis.speak(utterance);
         } else {
-            alert("Trình duyệt này không hỗ trợ phát âm thanh!");
+            alert("Trình duyệt này cùi quá, không hỗ trợ phát âm thanh!");
         }
+
     }
 
     // Boot app
