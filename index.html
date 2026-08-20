@@ -325,7 +325,7 @@
                 let yellow = d.tu_vang || 0;
                 let green = d.tu_xanh || 0;
 
-                // Build HTML các thẻ trạng thái (Chỉ hiển thị nếu lớn hơn 0),
+                // Build HTML các thẻ trạng thái (Chỉ hiển thị nếu lớn hơn 0)
                 let statusBadges = '';
                 if (red > 0) statusBadges += `<span class="badge badge-red" style="margin: 0 5px 5px 0;"> Cần ôn: ${red}</span>`;
                 if (yellow > 0) statusBadges += `<span class="badge" style="margin: 0 5px 5px 0; background: rgba(255, 193, 7, 0.2); color: #ffc107;"> Chờ ôn: ${yellow}</span>`;
