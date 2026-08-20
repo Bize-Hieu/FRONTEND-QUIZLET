@@ -207,7 +207,7 @@
                     <div class="flashcard-front">
                         <h1 id="wordEng"></h1>
                         <!-- NÚT PHÁT ÂM -->
-                        <button class="speak-btn" onclick="speakWord(event)" title="Phát âm">🔊</button>
+                        <button class="speak-btn" onpointerdown="event.stopPropagation()" onpointerup="event.stopPropagation()" onclick="speakWord(event)" title="Phát âm">🔊</button>
                         <p class="flip-hint">(Đang ở mặt trước)</p>
                     </div>
                     <div class="flashcard-back">
