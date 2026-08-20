@@ -69,11 +69,11 @@
         #studyView, #summaryView { display: none; padding-top: 50px; text-align: center; }
         
         /* HỆ THỐNG DOM XẾP CHỒNG (DECK STACK) */
-        #deckStack { position: relative; max-width: 600px; height: 300px; margin: 0 auto 30px auto; }
+        #deckStack { position: relative; max-width: 600px; height: 350px; margin: 0 auto 30px auto; }
 
         /* WRAPPER VUỐT VÀ OVERLAY (Không xoay 3D) */
         #swipeWrapper {
-            position: absolute; top: 0; left: 0; right: 0; height: 280px;
+            position: absolute; top: 0; left: 0; right: 0; height: 330px;
             cursor: grab; touch-action: none; user-select: none; z-index: 2;
         }
         #swipeWrapper:active { cursor: grabbing; }
@@ -108,7 +108,26 @@
 
         #wordEng, #nextWordEng { font-size: 3em; margin: 0; color: var(--text-light); }
         #wordVie { font-size: 2.2em; color: #ffffff; margin: 0; } 
-        .flip-hint { color: var(--text-gray); margin-top: 40px; font-size: 0.9em; }
+        .flip-hint { color: var(--text-gray); margin-top: 20px; font-size: 0.9em; }
+
+        /* NÚT PHÁT ÂM THANH */
+        .speak-btn {
+            background: rgba(255, 255, 255, 0.1);
+            color: white;
+            border: none;
+            border-radius: 50%;
+            width: 50px;
+            height: 50px;
+            font-size: 1.5em;
+            margin-top: 25px;
+            cursor: pointer;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            transition: background 0.2s;
+            z-index: 10;
+        }
+        .speak-btn:hover { background: rgba(255, 255, 255, 0.3); }
         
         /* TRẠNG THÁI HỌC PHẦN */
         .badge {
@@ -187,6 +206,8 @@
                 <div class="flashcard" id="flashcardInner">
                     <div class="flashcard-front">
                         <h1 id="wordEng"></h1>
+                        <!-- NÚT PHÁT ÂM -->
+                        <button class="speak-btn" onclick="speakWord(event)" title="Phát âm">🔊</button>
                         <p class="flip-hint">(Đang ở mặt trước)</p>
                     </div>
                     <div class="flashcard-back">
@@ -277,18 +298,17 @@
                 }
 
                 // Có Data thì build 3 mảng Đỏ/Vàng/Xanh
-                // Dùng toán tử || 0 để bẫy trường hợp Backend chưa đẩy code lên, né văng Null
                 let red = d.tu_do || 0;
                 let yellow = d.tu_vang || 0;
                 let green = d.tu_xanh || 0;
 
                 // Build HTML các thẻ trạng thái (Chỉ hiển thị nếu lớn hơn 0)
                 let statusBadges = '';
-                if (red > 0) statusBadges += `<span class="badge badge-red" style="margin: 0 5px 5px 0;"> Cần ôn: ${red}</span>`;
-                if (yellow > 0) statusBadges += `<span class="badge" style="margin: 0 5px 5px 0; background: rgba(255, 193, 7, 0.2); color: #ffc107;"> Chờ ôn: ${yellow}</span>`;
-                if (green > 0) statusBadges += `<span class="badge badge-green" style="margin: 0 5px 5px 0;"> Đã thuộc: ${green}</span>`;
+                if (red > 0) statusBadges += `<span class="badge badge-red" style="margin: 0 5px 5px 0;">🔴 Cần ôn: ${red}</span>`;
+                if (yellow > 0) statusBadges += `<span class="badge" style="margin: 0 5px 5px 0; background: rgba(255, 193, 7, 0.2); color: #ffc107;">🟡 Chờ ôn: ${yellow}</span>`;
+                if (green > 0) statusBadges += `<span class="badge badge-green" style="margin: 0 5px 5px 0;">🟢 Đã thuộc: ${green}</span>`;
 
-                // Nếu Backend cũ vẫn báo theo dạng tổng chung chưa update (bẫy lỗi)
+                // Backup nếu BE chưa kịp nhả code 3 biến màu
                 if (red === 0 && yellow === 0 && green === 0 && d.so_tu_can_on > 0) {
                      statusBadges = `<span class="badge badge-red" style="margin: 0 5px 5px 0;">🔴 Cần ôn: ${d.so_tu_can_on}</span>`;
                 }
@@ -365,7 +385,6 @@
             sessionRemember = 0;
             sessionForget = 0;
 
-            // Reset CSS vòng Donut trước khi vào học để tránh dính cache màu cũ
             document.getElementById('circleRemember').style.strokeDasharray = `0, 100`;
             document.getElementById('circleForget').style.strokeDasharray = `0, 100`;
 
@@ -378,7 +397,6 @@
     }
 
     function showCard() {
-        // HẾT THẺ -> BUNG TỔNG KẾT
         if (currentIndex >= currentWords.length) {
             document.getElementById('studyView').style.display = 'none';
             document.getElementById('summaryView').style.display = 'block';
@@ -392,7 +410,6 @@
             
             document.getElementById('progressText').innerText = `${percentRemember}%`;
 
-            // Can thiệp DOM sau 50ms để CSS Transition kích hoạt animation
             setTimeout(() => {
                 document.getElementById('circleRemember').style.strokeDasharray = `${percentRemember}, 100`;
                 document.getElementById('circleForget').style.strokeDasharray = `${percentForget}, 100`;
@@ -526,6 +543,24 @@
 
     swipeWrapper.addEventListener('pointerup', endDrag);
     swipeWrapper.addEventListener('pointercancel', endDrag);
+
+    /* 5. TEXT TO SPEECH (PHÁT ÂM TỪ VỰNG) */
+    function speakWord(event) {
+        if (event) event.stopPropagation();
+
+        let rawWord = document.getElementById('wordEng').innerText;
+        let cleanWord = rawWord.replace(/\s*\(.*?\)\s*/g, '').trim();
+
+        if ('speechSynthesis' in window) {
+            window.speechSynthesis.cancel();
+            const utterance = new SpeechSynthesisUtterance(cleanWord);
+            utterance.lang = 'en-US'; 
+            utterance.rate = 0.9;     
+            window.speechSynthesis.speak(utterance);
+        } else {
+            alert("Trình duyệt này không hỗ trợ phát âm thanh!");
+        }
+    }
 
     // Boot app
     loadDecks();
