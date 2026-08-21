@@ -297,6 +297,7 @@
     let activeDeckId = null;
     let sessionRemember = 0;
     let sessionForget = 0;
+    let audioCache = {}; // Kho chứa mp3 để tăng tốc độ phát
 
     /* 1. DASHBOARD & DATA LOGIC */
     async function loadDecks() {
@@ -609,53 +610,66 @@ async function speakWord(event) {
 
         let rawWord = document.getElementById('wordEng').innerText;
         let cleanWord = rawWord.replace(/\s*\(.*?\)\s*/g, '').trim();
+        
+        // 1. CHIA ĐỂ TRỊ: Nếu là cụm từ (có dấu cách) -> Sút thẳng qua AI đọc cho lẹ, khỏi gọi API tốn thời gian
+        if (cleanWord.includes(' ')) {
+            playAIVoice(cleanWord);
+            return;
+        }
 
+        // 2. KHO LƯU TRỮ (CACHE): Nếu đã tải mp3 của từ này rồi, lôi ra xài luôn, không gọi API nữa
+        if (audioCache[cleanWord]) {
+            let cachedAudio = new Audio(audioCache[cleanWord]);
+            cachedAudio.play();
+            return;
+        }
+
+        // 3. TÌM HÀNG XỊN (Lần đầu gặp từ đơn):
         try {
-            // BƯỚC 1: Đấm thẳng vào Free Dictionary API để moi link MP3 người thật
             const res = await fetch(`https://api.dictionaryapi.dev/api/v2/entries/en/${cleanWord}`);
-            if (!res.ok) throw new Error("API không có từ này");
+            if (!res.ok) throw new Error("API móm");
             const data = await res.json();
-            
-            // Tìm mỏi mắt trong đống data xem có link mp3 nào không
+
             let audioUrl = '';
+            // Ưu tiên mò giọng US, không có thì lấy đại mp3 đầu tiên
             for (let ph of data[0].phonetics) {
-                if (ph.audio && ph.audio !== '') {
+                if (ph.audio && ph.audio.includes('-us.mp3')) {
                     audioUrl = ph.audio;
                     break;
+                } else if (ph.audio && ph.audio !== '') {
+                    audioUrl = ph.audio;
                 }
             }
 
-            // Có link thì phát luôn file mp3
             if (audioUrl) {
+                audioCache[cleanWord] = audioUrl; // Cất vào kho RAM ngay lập tức
                 const audio = new Audio(audioUrl);
                 audio.play();
-                return; // Phát xong thì thoát, không chạy xuống dưới nữa
+                return; 
             }
-            throw new Error("Có từ nhưng không có link audio");
+            throw new Error("Không có link mp3");
 
         } catch (error) {
-            // BƯỚC 2: FALLBACK - Bị lỗi hoặc API không có (cụm từ dài) thì lôi giọng AI cũ ra xài
-            console.log("Không tìm thấy mp3 người thật, xài tạm giọng AI trình duyệt...");
+            // Rớt mạng, API sập, hoặc từ lạ -> Chữa cháy bằng AI
+            playAIVoice(cleanWord);
+        }
+    }
+
+    // Hàm phụ trợ tách riêng để gọi cho sạch code
+    function playAIVoice(text) {
+        if ('speechSynthesis' in window) {
+            window.speechSynthesis.cancel(); 
+            const utterance = new SpeechSynthesisUtterance(text);
+            utterance.lang = 'en-US'; 
+            utterance.rate = 0.9; 
             
-            if ('speechSynthesis' in window) {
-                window.speechSynthesis.cancel();
-                const utterance = new SpeechSynthesisUtterance(cleanWord);
-                utterance.lang = 'en-US'; 
-                utterance.rate = 0.9; 
-                
-                const voices = window.speechSynthesis.getVoices();
-                let bestVoice = voices.find(v => v.name.includes('Google US English')) || 
-                                voices.find(v => v.name.includes('Natural') && v.lang.includes('en-US')) || 
-                                voices.find(v => v.lang === 'en-US');
+            const voices = window.speechSynthesis.getVoices();
+            let bestVoice = voices.find(v => v.name.includes('Google US English')) || 
+                            voices.find(v => v.name.includes('Natural') && v.lang.includes('en-US')) || 
+                            voices.find(v => v.lang === 'en-US');
 
-                if (bestVoice) {
-                    utterance.voice = bestVoice;
-                }
-
-                window.speechSynthesis.speak(utterance);
-            } else {
-                alert("Trình duyệt này cùi quá, không hỗ trợ phát âm thanh!");
-            }
+            if (bestVoice) { utterance.voice = bestVoice; }
+            window.speechSynthesis.speak(utterance);
         }
     }
 
