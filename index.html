@@ -182,7 +182,11 @@
 
 <!-- VIEW 1: DASHBOARD -->
 <div id="dashboardView" class="container">
-    <h2>Jump back In (Học Phần Của Ông)</h2>
+    <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid var(--bg-card); margin-bottom: 20px;">
+        <h2 style="border: none; margin-bottom: 0;">Jump back In (Học Phần Của Ông)</h2>
+        <button class="btn-success" onclick="enterGlobalStudyMode()">🚀 Ôn toàn bộ</button>
+    </div>
+    
     <div id="deckList" class="deck-scroll-container">
         <p style="color: var(--text-gray);">Đang tải dữ liệu...</p>
     </div>
@@ -227,6 +231,7 @@
             <div class="flashcard-container">
                 <div class="flashcard" id="flashcardInner">
                     <div class="flashcard-front">
+                        <div id="currentDeckBadge" class="badge badge-gray" style="margin-bottom: 15px; font-size: 0.9em; background: rgba(255,255,255,0.15);"></div>
                         <h1 id="wordEng"></h1>
                         <p class="flip-hint">(Đang ở mặt trước)</p>
                     </div>
@@ -305,7 +310,6 @@
             }
 
             const html = decks.map(d => {
-                // Rỗng 100%
                 if (d.tong_so_tu === 0) {
                     return `
                     <div class="deck-card">
@@ -320,18 +324,15 @@
                     `;
                 }
 
-                // Có Data thì build 3 mảng Đỏ/Vàng/Xanh
                 let red = d.tu_do || 0;
                 let yellow = d.tu_vang || 0;
                 let green = d.tu_xanh || 0;
 
-                // Build HTML các thẻ trạng thái (Chỉ hiển thị nếu lớn hơn 0)
                 let statusBadges = '';
                 if (red > 0) statusBadges += `<span class="badge badge-red" style="margin: 0 5px 5px 0;"> Cần ôn: ${red}</span>`;
                 if (yellow > 0) statusBadges += `<span class="badge" style="margin: 0 5px 5px 0; background: rgba(255, 193, 7, 0.2); color: #ffc107;"> Chờ ôn: ${yellow}</span>`;
                 if (green > 0) statusBadges += `<span class="badge badge-green" style="margin: 0 5px 5px 0;"> Đã thuộc: ${green}</span>`;
 
-                // Backup nếu BE chưa kịp nhả code 3 biến màu
                 if (red === 0 && yellow === 0 && green === 0 && d.so_tu_can_on > 0) {
                      statusBadges = `<span class="badge badge-red" style="margin: 0 5px 5px 0;">🔴 Cần ôn: ${d.so_tu_can_on}</span>`;
                 }
@@ -392,9 +393,36 @@
     
     function resetDeck() {
         if(activeDeckId) enterStudyMode(activeDeckId);
+        else enterGlobalStudyMode();
     }
 
     /* 3. CORE STUDY LOGIC */
+    // CHẾ ĐỘ HỌC TOÀN BỘ (MỚI THÊM)
+    async function enterGlobalStudyMode() {
+        try {
+            activeDeckId = null; 
+            const res = await fetch(`${API_URL}/cards/review-all`);
+            if (!res.ok) throw new Error(`Lỗi HTTP: ${res.status}`);
+            currentWords = await res.json();
+            
+            if (currentWords.length === 0) return alert('Thảnh thơi rồi! Không còn từ nào nợ trong hôm nay.');
+            
+            currentIndex = 0;
+            sessionRemember = 0;
+            sessionForget = 0;
+
+            document.getElementById('circleRemember').style.strokeDasharray = `0, 100`;
+            document.getElementById('circleForget').style.strokeDasharray = `0, 100`;
+
+            document.getElementById('dashboardView').style.display = 'none';
+            document.getElementById('summaryView').style.display = 'none';
+            document.getElementById('studyView').style.display = 'block';
+            
+            showCard();
+        } catch (error) { alert('Lỗi: ' + error.message); }
+    }
+
+    // CHẾ ĐỘ HỌC TỪNG HỌC PHẦN (CŨ)
     async function enterStudyMode(deckId) {
         try {
             activeDeckId = deckId;
@@ -455,6 +483,10 @@
         document.getElementById('wordEng').innerText = currentWords[currentIndex].tu_tieng_anh;
         document.getElementById('wordVie').innerText = currentWords[currentIndex].nghia_tieng_viet;
         
+        // CẬP NHẬT TÊN HỌC PHẦN Ở ĐÂY
+        const deckName = currentWords[currentIndex].hocphan ? currentWords[currentIndex].hocphan.ten_hocphan : 'Tổng hợp';
+        document.getElementById('currentDeckBadge').innerText = `📦 Cụm: ${deckName}`;
+
         if (currentIndex + 1 < currentWords.length) {
             document.getElementById('nextWordEng').innerText = currentWords[currentIndex + 1].tu_tieng_anh;
         } else {
@@ -567,18 +599,7 @@
     swipeWrapper.addEventListener('pointerup', endDrag);
     swipeWrapper.addEventListener('pointercancel', endDrag);
 
- /* 5. TEXT TO SPEECH (PHÁT ÂM TỪ VỰNG - BẢN NÂNG CẤP GIỌNG AI) */
-    
-    // Ép trình duyệt mồi sẵn danh sách giọng nói ngầm từ lúc web mới mở
-    // Để tránh tình trạng bấm lần đầu nó bị câm vì chưa tải kịp
-    window.speechSynthesis.onvoiceschanged = function() {
-        window.speechSynthesis.getVoices();
-    };
-
- /* 5. TEXT TO SPEECH (PHÁT ÂM TỪ VỰNG - BẢN NÂNG CẤP GIỌNG AI) */
-    
-    // Ép trình duyệt mồi sẵn danh sách giọng nói ngầm từ lúc web mới mở
-    // Để tránh tình trạng bấm lần đầu nó bị câm vì chưa tải kịp
+    /* 5. TEXT TO SPEECH (PHÁT ÂM TỪ VỰNG - BẢN NÂNG CẤP GIỌNG AI) */
     window.speechSynthesis.onvoiceschanged = function() {
         window.speechSynthesis.getVoices();
     };
@@ -593,15 +614,10 @@
             window.speechSynthesis.cancel();
             const utterance = new SpeechSynthesisUtterance(cleanWord);
             utterance.lang = 'en-US'; 
-            utterance.rate = 0.9; // Giảm tốc độ xuống một chút cho dễ nghe
+            utterance.rate = 0.9; 
             
-            // TRUY LÙNG GIỌNG XỊN 
             const voices = window.speechSynthesis.getVoices();
             
-            // Bộ lọc ưu tiên: 
-            // 1. Giọng Google xịn (nếu xài Chrome)
-            // 2. Giọng AI Natural của Microsoft (nếu xài Edge)
-            // 3. Fallback về giọng tiếng Anh Mỹ mặc định
             let bestVoice = voices.find(v => v.name.includes('Google US English')) || 
                             voices.find(v => v.name.includes('Natural') && v.lang.includes('en-US')) || 
                             voices.find(v => v.lang === 'en-US');
@@ -614,7 +630,6 @@
         } else {
             alert("Trình duyệt này cùi quá, không hỗ trợ phát âm thanh!");
         }
-
     }
 
     // Boot app
