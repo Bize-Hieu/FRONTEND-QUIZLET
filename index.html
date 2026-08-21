@@ -604,31 +604,58 @@
         window.speechSynthesis.getVoices();
     };
 
-    function speakWord(event) {
+async function speakWord(event) {
         if (event) event.stopPropagation();
 
         let rawWord = document.getElementById('wordEng').innerText;
         let cleanWord = rawWord.replace(/\s*\(.*?\)\s*/g, '').trim();
 
-        if ('speechSynthesis' in window) {
-            window.speechSynthesis.cancel();
-            const utterance = new SpeechSynthesisUtterance(cleanWord);
-            utterance.lang = 'en-US'; 
-            utterance.rate = 0.9; 
+        try {
+            // BƯỚC 1: Đấm thẳng vào Free Dictionary API để moi link MP3 người thật
+            const res = await fetch(`https://api.dictionaryapi.dev/api/v2/entries/en/${cleanWord}`);
+            if (!res.ok) throw new Error("API không có từ này");
+            const data = await res.json();
             
-            const voices = window.speechSynthesis.getVoices();
-            
-            let bestVoice = voices.find(v => v.name.includes('Google US English')) || 
-                            voices.find(v => v.name.includes('Natural') && v.lang.includes('en-US')) || 
-                            voices.find(v => v.lang === 'en-US');
-
-            if (bestVoice) {
-                utterance.voice = bestVoice;
+            // Tìm mỏi mắt trong đống data xem có link mp3 nào không
+            let audioUrl = '';
+            for (let ph of data[0].phonetics) {
+                if (ph.audio && ph.audio !== '') {
+                    audioUrl = ph.audio;
+                    break;
+                }
             }
 
-            window.speechSynthesis.speak(utterance);
-        } else {
-            alert("Trình duyệt này cùi quá, không hỗ trợ phát âm thanh!");
+            // Có link thì phát luôn file mp3
+            if (audioUrl) {
+                const audio = new Audio(audioUrl);
+                audio.play();
+                return; // Phát xong thì thoát, không chạy xuống dưới nữa
+            }
+            throw new Error("Có từ nhưng không có link audio");
+
+        } catch (error) {
+            // BƯỚC 2: FALLBACK - Bị lỗi hoặc API không có (cụm từ dài) thì lôi giọng AI cũ ra xài
+            console.log("Không tìm thấy mp3 người thật, xài tạm giọng AI trình duyệt...");
+            
+            if ('speechSynthesis' in window) {
+                window.speechSynthesis.cancel();
+                const utterance = new SpeechSynthesisUtterance(cleanWord);
+                utterance.lang = 'en-US'; 
+                utterance.rate = 0.9; 
+                
+                const voices = window.speechSynthesis.getVoices();
+                let bestVoice = voices.find(v => v.name.includes('Google US English')) || 
+                                voices.find(v => v.name.includes('Natural') && v.lang.includes('en-US')) || 
+                                voices.find(v => v.lang === 'en-US');
+
+                if (bestVoice) {
+                    utterance.voice = bestVoice;
+                }
+
+                window.speechSynthesis.speak(utterance);
+            } else {
+                alert("Trình duyệt này cùi quá, không hỗ trợ phát âm thanh!");
+            }
         }
     }
 
