@@ -492,13 +492,35 @@
         document.getElementById('showVietBtn').style.display = 'inline-block';
         document.getElementById('engDef').innerText = 'Đang tìm định nghĩa Anh-Anh...';
         
-        // CHỌC API LẤY NGHĨA TIẾNG ANH (Không đụng tới Database)
-        let cleanWordForDef = currentWords[currentIndex].tu_tieng_anh.replace(/\s*\(.*?\)\s*/g, '').trim();
+// CHỌC API LẤY NGHĨA TIẾNG ANH (Phiên bản có nơ-ron thần kinh)
+        let originalWord = currentWords[currentIndex].tu_tieng_anh;
+        let cleanWordForDef = originalWord.replace(/\s*\(.*?\)\s*/g, '').trim();
+        
+        // 1. Phân tích đuôi từ loại (v, n, adj, adv) để bắt trúng phóc nghĩa
+        let targetPOS = null;
+        if (originalWord.includes('(v)')) targetPOS = 'verb';
+        else if (originalWord.includes('(n)')) targetPOS = 'noun';
+        else if (originalWord.includes('(adj)')) targetPOS = 'adjective';
+        else if (originalWord.includes('(adv)')) targetPOS = 'adverb';
+
         fetch(`https://api.dictionaryapi.dev/api/v2/entries/en/${cleanWordForDef}`)
             .then(res => res.json())
             .then(data => {
-                if(data[0] && data[0].meanings[0] && data[0].meanings[0].definitions[0]) {
-                    document.getElementById('engDef').innerText = data[0].meanings[0].definitions[0].definition;
+                if(data[0] && data[0].meanings) {
+                    let meanings = data[0].meanings;
+                    let selectedMeaning = meanings[0]; // Mặc định lấy cái đầu tiên nếu không có đuôi
+
+                    // Nếu có ghi đuôi (v, n...), đi tìm đúng loại đó
+                    if (targetPOS) {
+                        let matchedMeaning = meanings.find(m => m.partOfSpeech === targetPOS);
+                        if (matchedMeaning) selectedMeaning = matchedMeaning;
+                    }
+
+                    if (selectedMeaning && selectedMeaning.definitions[0]) {
+                        document.getElementById('engDef').innerText = selectedMeaning.definitions[0].definition;
+                    } else {
+                        document.getElementById('engDef').innerText = '(Từ này không có định nghĩa Tiếng Anh phù hợp)';
+                    }
                 } else {
                     document.getElementById('engDef').innerText = '(Từ này không có định nghĩa Tiếng Anh)';
                 }
