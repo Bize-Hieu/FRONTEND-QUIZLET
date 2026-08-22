@@ -16,6 +16,21 @@
             --success: #23b26d;
             --warning: #ff9800;
         }
+        /* VÒNG XOAY LOADING CSS */
+        .spinner {
+            display: inline-block;
+            width: 18px;
+            height: 18px;
+            border: 3px solid rgba(255, 255, 255, 0.3);
+            border-radius: 50%;
+            border-top-color: #ffffff;
+            animation: spin 1s ease-in-out infinite;
+            vertical-align: middle;
+            margin-right: 8px;
+        }
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
 
         body {
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
@@ -379,7 +394,7 @@ async function importData() {
         // Bật khiên bảo vệ: Đổi chữ và khóa nút để người dùng không bấm liên tục
         const btn = document.querySelector('button[onclick="importData()"]');
         const originalText = btn.innerText;
-        btn.innerText = "⏳ Đang nhờ AI độ định nghĩa... (Chờ 10s nhé)";
+        btn.innerHTML = '<div class="spinner"></div> Đang vắt óc AI... (Tầm 10-15s)';
         btn.disabled = true;
 
         try {
