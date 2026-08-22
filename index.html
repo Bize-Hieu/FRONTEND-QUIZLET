@@ -611,27 +611,30 @@ async function speakWord(event) {
         let rawWord = document.getElementById('wordEng').innerText;
         let cleanWord = rawWord.replace(/\s*\(.*?\)\s*/g, '').trim();
         
-        // 1. CHIA ĐỂ TRỊ: Nếu là cụm từ (có dấu cách) -> Sút thẳng qua AI đọc cho lẹ, khỏi gọi API tốn thời gian
+        // 1. CHIA ĐỂ TRỊ: Cụm từ dài -> Quăng cho AI đọc ngay và luôn
         if (cleanWord.includes(' ')) {
             playAIVoice(cleanWord);
             return;
         }
 
-        // 2. KHO LƯU TRỮ (CACHE): Nếu đã tải mp3 của từ này rồi, lôi ra xài luôn, không gọi API nữa
+        // 2. KHO LƯU TRỮ (CACHE)
         if (audioCache[cleanWord]) {
             let cachedAudio = new Audio(audioCache[cleanWord]);
-            cachedAudio.play();
+            // Nếu cache bị hỏng bất tử, bắt lỗi và gọi AI
+            cachedAudio.play().catch(e => {
+                delete audioCache[cleanWord];
+                playAIVoice(cleanWord);
+            });
             return;
         }
 
-        // 3. TÌM HÀNG XỊN (Lần đầu gặp từ đơn):
+        // 3. TÌM HÀNG XỊN TỪ API
         try {
             const res = await fetch(`https://api.dictionaryapi.dev/api/v2/entries/en/${cleanWord}`);
             if (!res.ok) throw new Error("API móm");
             const data = await res.json();
 
             let audioUrl = '';
-            // Ưu tiên mò giọng US, không có thì lấy đại mp3 đầu tiên
             for (let ph of data[0].phonetics) {
                 if (ph.audio && ph.audio.includes('-us.mp3')) {
                     audioUrl = ph.audio;
@@ -642,20 +645,25 @@ async function speakWord(event) {
             }
 
             if (audioUrl) {
-                audioCache[cleanWord] = audioUrl; // Cất vào kho RAM ngay lập tức
+                audioCache[cleanWord] = audioUrl; 
                 const audio = new Audio(audioUrl);
-                audio.play();
+                // BẪY LỖI TUYỆT ĐỐI: File tải về mà bị câm/lỗi -> Xóa cache, quất AI
+                audio.play().catch(e => {
+                    console.log("Phát hiện mp3 lỗi/rỗng, quay xe dùng AI!");
+                    delete audioCache[cleanWord];
+                    playAIVoice(cleanWord);
+                });
                 return; 
             }
             throw new Error("Không có link mp3");
 
         } catch (error) {
-            // Rớt mạng, API sập, hoặc từ lạ -> Chữa cháy bằng AI
+            // Lỗi mạng hoặc từ lạ -> AI gánh team
             playAIVoice(cleanWord);
         }
     }
 
-    // Hàm phụ trợ tách riêng để gọi cho sạch code
+    // Hàm phụ trợ phát âm AI
     function playAIVoice(text) {
         if ('speechSynthesis' in window) {
             window.speechSynthesis.cancel(); 
