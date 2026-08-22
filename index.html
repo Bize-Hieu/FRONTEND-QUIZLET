@@ -371,15 +371,35 @@
         loadDecks(); 
     }
 
-    async function importData() {
+async function importData() {
         const id = document.getElementById('deckId').value;
         const text = document.getElementById('quizletData').value;
         if (!id || !text) return alert('Nhập thiếu ID hoặc dữ liệu Quizlet rồi!');
-        const res = await fetch(`${API_URL}/cards/import`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id_hocphan: id, raw_text: text }) });
-        const result = await res.json();
-        alert(result.message || result.error);
-        document.getElementById('quizletData').value = '';
-        loadDecks(); 
+
+        // Bật khiên bảo vệ: Đổi chữ và khóa nút để người dùng không bấm liên tục
+        const btn = document.querySelector('button[onclick="importData()"]');
+        const originalText = btn.innerText;
+        btn.innerText = "⏳ Đang nhờ AI độ định nghĩa... (Chờ 10s nhé)";
+        btn.disabled = true;
+
+        try {
+            // QUAN TRỌNG: Đổi đuôi API thành /import-ai
+            const res = await fetch(`${API_URL}/cards/import-ai`, { 
+                method: 'POST', 
+                headers: { 'Content-Type': 'application/json' }, 
+                body: JSON.stringify({ id_hocphan: id, raw_text: text }) 
+            });
+            const result = await res.json();
+            alert(result.message || result.error);
+            document.getElementById('quizletData').value = '';
+            loadDecks(); 
+        } catch (error) {
+            alert("Lỗi kết nối server AI!");
+        } finally {
+            // Mở khóa nút trở lại
+            btn.innerText = originalText;
+            btn.disabled = false;
+        }
     }
 
     async function deleteDeck(id) {
@@ -486,48 +506,25 @@
         card.classList.remove('is-flipped');
         
         document.getElementById('wordEng').innerText = currentWords[currentIndex].tu_tieng_anh;
-        document.getElementById('wordVie').innerText = currentWords[currentIndex].nghia_tieng_viet;
-        // RESET MẶT SAU: Giấu Tiếng Việt, hiện nút, và báo đang tải
+
+        // RESET MẶT SAU: Giấu Tiếng Việt, hiện nút
         document.getElementById('wordVie').style.display = 'none';
         document.getElementById('showVietBtn').style.display = 'inline-block';
-        document.getElementById('engDef').innerText = 'Đang tìm định nghĩa Anh-Anh...';
         
-// CHỌC API LẤY NGHĨA TIẾNG ANH (Phiên bản có nơ-ron thần kinh)
-        let originalWord = currentWords[currentIndex].tu_tieng_anh;
-        let cleanWordForDef = originalWord.replace(/\s*\(.*?\)\s*/g, '').trim();
+        // CHẺ DỮ LIỆU "2 TRONG 1" TỪ SERVER AI TRẢ VỀ
+        let rawMeaning = currentWords[currentIndex].nghia_tieng_viet || "";
+        let splitParts = rawMeaning.split('|'); 
         
-        // 1. Phân tích đuôi từ loại (v, n, adj, adv) để bắt trúng phóc nghĩa
-        let targetPOS = null;
-        if (originalWord.includes('(v)')) targetPOS = 'verb';
-        else if (originalWord.includes('(n)')) targetPOS = 'noun';
-        else if (originalWord.includes('(adj)')) targetPOS = 'adjective';
-        else if (originalWord.includes('(adv)')) targetPOS = 'adverb';
-
-        fetch(`https://api.dictionaryapi.dev/api/v2/entries/en/${cleanWordForDef}`)
-            .then(res => res.json())
-            .then(data => {
-                if(data[0] && data[0].meanings) {
-                    let meanings = data[0].meanings;
-                    let selectedMeaning = meanings[0]; // Mặc định lấy cái đầu tiên nếu không có đuôi
-
-                    // Nếu có ghi đuôi (v, n...), đi tìm đúng loại đó
-                    if (targetPOS) {
-                        let matchedMeaning = meanings.find(m => m.partOfSpeech === targetPOS);
-                        if (matchedMeaning) selectedMeaning = matchedMeaning;
-                    }
-
-                    if (selectedMeaning && selectedMeaning.definitions[0]) {
-                        document.getElementById('engDef').innerText = selectedMeaning.definitions[0].definition;
-                    } else {
-                        document.getElementById('engDef').innerText = '(Từ này không có định nghĩa Tiếng Anh phù hợp)';
-                    }
-                } else {
-                    document.getElementById('engDef').innerText = '(Từ này không có định nghĩa Tiếng Anh)';
-                }
-            })
-            .catch(() => {
-                document.getElementById('engDef').innerText = '(Không tìm thấy định nghĩa Tiếng Anh)';
-            });
+        if (splitParts.length >= 2) {
+            // Thẻ xịn có AI: Nửa đầu làm định nghĩa Anh, nửa sau giấu làm Tiếng Việt
+            document.getElementById('engDef').innerHTML = splitParts[0].trim();
+            document.getElementById('wordVie').innerText = splitParts[1].trim();
+        } else {
+            // Thẻ cũ thời tiền sử chưa có AI: Hiện luôn Tiếng Việt ra ngoài, giấu cái nút đi
+            document.getElementById('engDef').innerHTML = rawMeaning.trim();
+            document.getElementById('wordVie').innerText = rawMeaning.trim();
+            document.getElementById('showVietBtn').style.display = 'none';
+        }
         
         // CẬP NHẬT TÊN HỌC PHẦN Ở ĐÂY
         const deckName = currentWords[currentIndex].hocphan ? currentWords[currentIndex].hocphan.ten_hocphan : 'Tổng hợp';
