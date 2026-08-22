@@ -236,12 +236,12 @@
                         <p class="flip-hint">(Đang ở mặt trước)</p>
                     </div>
                     <div class="flashcard-back">
-                        <!-- Lớp 1: Hiện nghĩa Tiếng Anh từ API -->
-                        <div id="engDef" style="font-size: 1.1em; color: #a5b4fc; font-style: italic; margin-bottom: 20px; padding: 0 20px; line-height: 1.4; text-align: center;">Đang tải định nghĩa...</div>
+<!-- Lớp 1: Hiện nghĩa Tiếng Anh từ API (Đã phóng to, bôi trắng) -->
+                        <div id="engDef" style="font-size: 1.4em; color: #ffffff; font-style: italic; margin-bottom: 20px; padding: 0 20px; line-height: 1.4; text-align: center;">Đang tải định nghĩa...</div>
                         
-                        <!-- Lớp 2: Giấu Tiếng Việt, thêm nút mở khóa -->
+                        <!-- Lớp 2: Giấu Tiếng Việt, thêm nút mở khóa (Đã fix lỗi lật thẻ) -->
                         <h3 id="wordVie" style="display: none; color: #ffffff; margin: 0; font-size: 2.2em;"></h3>
-                        <button id="showVietBtn" style="background: transparent; border: 1px solid var(--text-gray); color: var(--text-light); padding: 8px 15px; font-size: 0.85em; border-radius: 20px; margin-top: 10px; cursor: pointer;" onclick="document.getElementById('wordVie').style.display='block'; this.style.display='none'; event.stopPropagation();">Khó quá? Xem Tiếng Việt</button>
+                        <button id="showVietBtn" style="background: transparent; border: 1px solid var(--text-gray); color: var(--text-light); padding: 8px 15px; font-size: 0.85em; border-radius: 20px; margin-top: 10px; cursor: pointer;" onpointerdown="event.stopPropagation()" onpointerup="event.stopPropagation()" onclick="document.getElementById('wordVie').style.display='block'; this.style.display='none';">Khó quá? Xem Tiếng Việt</button>
                     </div>
                 </div>
             </div>
