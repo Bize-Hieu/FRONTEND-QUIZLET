@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Hệ Thống Ôn Tập Của Hiếu</title>
+
     <style>
         :root {
             --bg-main: #0a092d;
@@ -191,6 +192,53 @@
         }
         .progress-text { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); font-size: 1.8em; font-weight: bold; color: var(--text-light); }
 
+        /* NÚT XEM THÊM THÔNG TIN */
+        .extra-btn {
+            color: white; border: none; border-radius: 50%;
+            width: 50px; height: 50px; font-size: 1.4em;
+            cursor: pointer; display: flex; justify-content: center; align-items: center;
+            transition: all 0.2s;
+        }
+        .floating-extra {
+            position: absolute;
+            top: calc(50% + 65px); /* Nằm ngay dưới nút loa */
+            right: -80px; 
+            background: var(--bg-card); 
+            box-shadow: 0 4px 15px rgba(0,0,0,0.3);
+            z-index: 100;
+        }
+        .floating-extra:hover { background: var(--warning); transform: scale(1.1); }
+
+        /* MODAL KÍNH MỜ NGHỆ CẢ CỦ */
+        .glass-modal {
+            position: fixed; top: 0; left: 0; width: 100vw; height: 100vh;
+            background: rgba(10, 9, 45, 0.6);
+            backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px);
+            z-index: 999; display: flex; justify-content: center; align-items: center;
+            opacity: 0; pointer-events: none; transition: opacity 0.3s ease;
+        }
+        .glass-modal.active { opacity: 1; pointer-events: auto; }
+        .glass-content {
+            background: rgba(46, 56, 86, 0.85); border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 20px; padding: 30px; max-width: 500px; width: 90%;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.4);
+            transform: translateY(30px) scale(0.95);
+            transition: transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            position: relative;
+        }
+        .glass-modal.active .glass-content { transform: translateY(0) scale(1); }
+        .close-modal-btn {
+            position: absolute; top: 15px; right: 15px; background: transparent;
+            border: none; color: var(--text-gray); font-size: 1.5em; cursor: pointer;
+            width: 30px; height: 30px; display: flex; align-items: center; justify-content: center; border-radius: 50%;
+        }
+        .close-modal-btn:hover { background: rgba(255,255,255,0.1); color: white; }
+
+        @media (max-width: 768px) {
+            .floating-extra { top: -70px; right: 60px; transform: none; }
+            .floating-extra:hover { transform: scale(1.1); }
+        }
+
     </style>
 </head>
 <body>
@@ -250,32 +298,40 @@
                         <h1 id="wordEng"></h1>
                         <p class="flip-hint">(Đang ở mặt trước)</p>
                     </div>
-                    <div class="flashcard-back" style="padding: 20px; text-align: left; overflow-y: auto; justify-content: flex-start; box-sizing: border-box;">
-                        <!-- Lớp 1: Định nghĩa Tiếng Anh -->
-                        <div id="engDef" style="font-size: 1.1em; color: #ffffff; font-style: italic; margin-bottom: 15px; margin-top: 30px; border-left: 3px solid var(--primary); padding-left: 10px;">Đang tải định nghĩa...</div>
+<div class="flashcard-back" style="padding: 20px; display: flex; flex-direction: column; justify-content: center; align-items: center; box-sizing: border-box;">
+                        <!-- Chỉ để lại đúng Định nghĩa Anh và Nghĩa Việt -->
+                        <div id="engDef" style="font-size: 1.3em; color: #ffffff; font-style: italic; margin-bottom: 30px; border-left: 3px solid var(--primary); padding-left: 15px; width: 90%;">Đang tải...</div>
                         
-                        <!-- Lớp MỚI: Word Form -->
-                        <div id="wordFormBox" style="font-size: 0.9em; color: var(--text-gray); margin-bottom: 15px; display: none;">
-                            <strong>Word Form:</strong> <span id="wordFormText"></span>
-                        </div>
-                        
-                        <!-- Lớp MỚI: Câu mẫu -->
-                        <div id="exampleBox" style="background: rgba(0,0,0,0.2); padding: 12px; border-radius: 8px; margin-bottom: 20px; font-size: 0.95em; display: none; line-height: 1.4;">
-                            💡 <span id="exampleText"></span>
-                        </div>
-                        
-                        <!-- Lớp 2: Nghĩa Tiếng Việt & Nút xem -->
-                        <h3 id="wordVie" style="display: none; color: var(--warning); margin: 0; font-size: 1.5em; text-align: center;"></h3>
-                        <div style="text-align: center; margin-top: auto; margin-bottom: 20px;">
-                            <button id="showVietBtn" style="background: transparent; border: 1px solid var(--text-gray); color: var(--text-light); padding: 8px 15px; font-size: 0.85em; border-radius: 20px; cursor: pointer;" onpointerdown="event.stopPropagation()" onpointerup="event.stopPropagation()" onclick="document.getElementById('wordVie').style.display='block'; this.style.display='none';">Xem Nghĩa Tiếng Việt</button>
-                        </div>
+                        <h3 id="wordVie" style="display: none; color: var(--warning); margin: 0; font-size: 1.8em; text-align: center;"></h3>
+                        <button id="showVietBtn" style="background: transparent; border: 1px solid var(--text-gray); color: var(--text-light); padding: 10px 20px; font-size: 0.9em; border-radius: 20px; cursor: pointer;" onpointerdown="event.stopPropagation()" onpointerup="event.stopPropagation()" onclick="document.getElementById('wordVie').style.display='block'; this.style.display='none';">Xem Nghĩa Tiếng Việt</button>
                     </div>
                 </div>
             </div>
         </div>
 
-        <!-- NÚT PHÁT ÂM (Nằm ngoài swipeWrapper, chống lật thẻ) -->
+        <!-- NÚT PHÁT ÂM VÀ NÚT XEM THÊM NẰM BÊN PHẢI -->
         <button class="speak-btn floating-speak" onclick="speakWord(event)" title="Phát âm">🔊</button>
+        <button id="extraInfoBtn" class="extra-btn floating-extra" onclick="toggleExtraInfo(event)" title="Xem ví dụ & Word Form" style="display: none;">💡</button>
+    </div>
+
+    <!-- CÁI NÀY LÀ CỬA SỔ NỔI GLASSMORPHISM NHÁ -->
+    <div id="extraInfoModal" class="glass-modal" onclick="closeExtraInfo(event)">
+        <div class="glass-content" onclick="event.stopPropagation()">
+            <button class="close-modal-btn" onclick="closeExtraInfo(event)">×</button>
+            <h3 style="margin-top: 0; color: var(--primary); border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 10px;">Deep Dive 🧠</h3>
+            
+            <div id="modalWordFormBox" style="margin-bottom: 20px; display: none;">
+                <div style="font-size: 0.85em; color: var(--text-gray); text-transform: uppercase; letter-spacing: 1px; margin-bottom: 5px;">Họ hàng từ vựng</div>
+                <div id="modalWordFormText" style="color: #e2e8f0; font-size: 1.1em; line-height: 1.5;"></div>
+            </div>
+
+            <div id="modalExampleBox" style="display: none;">
+                <div style="font-size: 0.85em; color: var(--text-gray); text-transform: uppercase; letter-spacing: 1px; margin-bottom: 5px;">Ví dụ thực tế</div>
+                <div style="background: rgba(0,0,0,0.3); padding: 15px; border-radius: 12px; border-left: 3px solid var(--warning);">
+                    <span id="modalExampleText" style="color: #f8fafc; font-size: 1.1em; font-style: italic; line-height: 1.5;"></span>
+                </div>
+            </div>
+        </div>
     </div>
     
     <div id="actionButtons" style="display:none; gap: 20px; justify-content: center; max-width: 600px; margin: 0 auto;">
@@ -447,7 +503,21 @@ async function importData() {
         if(activeDeckId) enterStudyMode(activeDeckId);
         else enterGlobalStudyMode();
     }
+// Hàm bẻ khóa dấu ** của AI thành chữ in đậm có màu
+    function formatMarkdown(text) {
+        return text.replace(/\*\*(.*?)\*\*/g, '<b style="color: var(--warning);">$1</b>');
+    }
 
+    // Đóng/Mở Modal Kính mờ
+    function toggleExtraInfo(event) {
+        if (event) event.stopPropagation();
+        document.getElementById('extraInfoModal').classList.add('active');
+    }
+    function closeExtraInfo(event) {
+        if (event) event.stopPropagation();
+        document.getElementById('extraInfoModal').classList.remove('active');
+    }
+    
     /* 3. CORE STUDY LOGIC */
     // CHẾ ĐỘ HỌC TOÀN BỘ (MỚI THÊM)
     async function enterGlobalStudyMode() {
@@ -553,23 +623,29 @@ async function importData() {
             document.getElementById('showVietBtn').style.display = 'none';
         }
 
-        // BƠM DATA WORD FORM VÀO GIAO DIỆN
+// BƠM DATA VÀO CỬA SỔ NỔI & KIỂM TRA ẨN/HIỆN NÚT BÓNG ĐÈN
         let wordForm = currentWords[currentIndex].word_form;
+        let example = currentWords[currentIndex].cau_mau;
+        let hasExtra = false;
+
         if (wordForm && wordForm.trim() !== "") {
-            document.getElementById('wordFormBox').style.display = 'block';
-            document.getElementById('wordFormText').innerText = wordForm;
+            document.getElementById('modalWordFormBox').style.display = 'block';
+            document.getElementById('modalWordFormText').innerHTML = formatMarkdown(wordForm);
+            hasExtra = true;
         } else {
-            document.getElementById('wordFormBox').style.display = 'none';
+            document.getElementById('modalWordFormBox').style.display = 'none';
         }
 
-        // BƠM DATA CÂU MẪU VÀO GIAO DIỆN
-        let example = currentWords[currentIndex].cau_mau;
         if (example && example.trim() !== "") {
-            document.getElementById('exampleBox').style.display = 'block';
-            document.getElementById('exampleText').innerText = example;
+            document.getElementById('modalExampleBox').style.display = 'block';
+            document.getElementById('modalExampleText').innerHTML = formatMarkdown(example);
+            hasExtra = true;
         } else {
-            document.getElementById('exampleBox').style.display = 'none';
+            document.getElementById('modalExampleBox').style.display = 'none';
         }
+
+        // Nếu từ có ví dụ hoặc word form thì mới hiện nút bóng đèn
+        document.getElementById('extraInfoBtn').style.display = hasExtra ? 'flex' : 'none';
         
         // CẬP NHẬT TÊN HỌC PHẦN Ở ĐÂY
         const deckName = currentWords[currentIndex].hocphan ? currentWords[currentIndex].hocphan.ten_hocphan : 'Tổng hợp';
